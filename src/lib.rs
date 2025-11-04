@@ -1,5 +1,6 @@
 pub mod bin_format;
 pub mod txt_format;
+pub mod csv_format;
 
 #[derive(Debug)]
 pub enum TxType {
@@ -34,6 +35,6 @@ pub trait Converter {
     where
         Self: Sized;
     fn write_to<W: std::io::Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), String>;
-    
+
     fn as_records(&self) -> &Vec<Record>;
 }
