@@ -76,8 +76,8 @@ impl Converter for BinRecords {
         Ok(BinRecords { records })
     }
 
-    fn write_to<W: Write>(&mut self, w: &mut W) -> Result<(), String> {
-        for record in &self.records {
+    fn write_to<W: Write>(records: &Vec<Record>, w: &mut W) -> Result<(), String> {
+        for record in records {
             let mut body = Vec::new();
 
             // === Поля тела ===
@@ -120,5 +120,9 @@ impl Converter for BinRecords {
         }
 
         Ok(())
+    }
+
+    fn as_records(&self) -> &Vec<Record> {
+        &self.records
     }
 }

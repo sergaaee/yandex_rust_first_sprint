@@ -1,4 +1,5 @@
 pub mod bin_format;
+pub mod txt_format;
 
 #[derive(Debug)]
 pub enum TxType {
@@ -32,5 +33,7 @@ pub trait Converter {
     fn from_read<R: std::io::Read>(r: &mut R) -> Result<Self, String>
     where
         Self: Sized;
-    fn write_to<W: std::io::Write>(&mut self, writer: &mut W) -> Result<(), String>;
+    fn write_to<W: std::io::Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), String>;
+    
+    fn as_records(&self) -> &Vec<Record>;
 }
