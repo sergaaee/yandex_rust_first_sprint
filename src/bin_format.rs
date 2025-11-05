@@ -126,3 +126,95 @@ impl Converter for BinRecords {
         &self.records
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn sample_record(id: u64, desc: &str) -> Record {
+        Record {
+            tx_type: TxType::DEPOSIT,
+            tx_status: TxStatus::SUCCESS,
+            to_user_id: 1000,
+            from_user_id: 0,
+            timestamp: 1_634_000_000_000,
+            description: desc.to_string(),
+            tx_id: id,
+            amount: 500,
+        }
+    }
+
+    #[test]
+    fn test_write_and_read_single_record() {
+        let record = sample_record(42, "Single record");
+        let records = vec![record];
+
+        // Пишем в память
+        let mut buf = Vec::new();
+        BinRecords::write_to(&records, &mut buf).unwrap();
+
+        // Читаем из памяти
+        let mut cursor = Cursor::new(buf);
+        let parsed = BinRecords::from_read(&mut cursor).unwrap();
+
+        assert_eq!(parsed.records.len(), 1);
+        let rec = &parsed.records[0];
+        assert_eq!(rec.tx_id, 42);
+        assert_eq!(rec.description, "Single record");
+        assert_eq!(rec.tx_type, TxType::DEPOSIT);
+        assert_eq!(rec.tx_status, TxStatus::SUCCESS);
+        assert_eq!(rec.amount, 500);
+    }
+
+    #[test]
+    fn test_multiple_records_roundtrip() {
+        let input_records = vec![
+            sample_record(1, "First"),
+            sample_record(2, "Second"),
+            sample_record(3, "Third"),
+        ];
+
+        let mut buf = Vec::new();
+        BinRecords::write_to(&input_records, &mut buf).unwrap();
+
+        let mut cursor = Cursor::new(buf);
+        let output = BinRecords::from_read(&mut cursor).unwrap();
+
+        assert_eq!(input_records.len(), output.records.len());
+        for (a, b) in input_records.iter().zip(output.records.iter()) {
+            assert_eq!(a.tx_id, b.tx_id);
+            assert_eq!(a.description, b.description);
+            assert_eq!(a.amount, b.amount);
+        }
+    }
+
+    #[test]
+    fn test_invalid_magic_header() {
+        // записываем неправильный заголовок
+        let mut buf = Vec::new();
+        buf.extend_from_slice(b"XXXX");
+        buf.extend_from_slice(&[0, 0, 0, 0]);
+
+        let mut cursor = Cursor::new(buf);
+        let result = BinRecords::from_read(&mut cursor);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_incomplete_data_returns_ok_with_partial_read() {
+        // создаём корректную запись, но обрываем на середине
+        let record = sample_record(10, "Incomplete");
+        let mut buf = Vec::new();
+        BinRecords::write_to(&vec![record], &mut buf).unwrap();
+
+        let cutoff = buf.len() / 2;
+        let mut truncated = Cursor::new(&buf[..cutoff]);
+
+        // Должен просто закончить чтение без паники
+        let result = BinRecords::from_read(&mut truncated);
+        assert!(result.is_ok());
+        assert!(result.unwrap().records.len() <= 1);
+    }
+}

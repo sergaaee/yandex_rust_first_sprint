@@ -60,7 +60,7 @@ impl Converter for CSVRecords {
             writer,
             "TX_TYPE,STATUS,TO_USER_ID,FROM_USER_ID,TIMESTAMP,DESCRIPTION,TX_ID,AMOUNT"
         )
-            .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
         for rec in records {
             writeln!(
@@ -75,7 +75,7 @@ impl Converter for CSVRecords {
                 rec.tx_id,
                 rec.amount
             )
-                .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -87,7 +87,10 @@ impl Converter for CSVRecords {
 }
 
 fn parse_record(map: &std::collections::HashMap<String, String>) -> Result<Record, String> {
-    fn get<T: std::str::FromStr>(map: &std::collections::HashMap<String, String>, key: &str) -> Result<T, String> {
+    fn get<T: std::str::FromStr>(
+        map: &std::collections::HashMap<String, String>,
+        key: &str,
+    ) -> Result<T, String> {
         map.get(key)
             .ok_or_else(|| format!("нет {}", key))?
             .parse::<T>()
@@ -120,11 +123,79 @@ fn parse_record(map: &std::collections::HashMap<String, String>) -> Result<Recor
         to_user_id: get(map, "TO_USER_ID")?,
         from_user_id: get(map, "FROM_USER_ID")?,
         timestamp: get(map, "TIMESTAMP")?,
-        description: map
-            .get("DESCRIPTION")
-            .cloned()
-            .unwrap_or_default(),
+        description: map.get("DESCRIPTION").cloned().unwrap_or_default(),
         tx_id: get(map, "TX_ID")?,
         amount: get(map, "AMOUNT")?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn sample_records() -> Vec<Record> {
+        vec![
+            Record {
+                tx_type: TxType::DEPOSIT,
+                tx_status: TxStatus::SUCCESS,
+                to_user_id: 100,
+                from_user_id: 0,
+                timestamp: 1700000000,
+                description: "Пополнение счёта".to_string(),
+                tx_id: 1,
+                amount: 5000,
+            },
+            Record {
+                tx_type: TxType::TRANSFER,
+                tx_status: TxStatus::PENDING,
+                to_user_id: 200,
+                from_user_id: 100,
+                timestamp: 1700000100,
+                description: "Перевод другу".to_string(),
+                tx_id: 2,
+                amount: 1500,
+            },
+        ]
+    }
+
+    #[test]
+    fn test_csv_write_and_read_back() {
+        let records = sample_records();
+
+        // Пишем CSV в буфер
+        let mut buf = Cursor::new(Vec::new());
+        CSVRecords::write_to(&records, &mut buf).unwrap();
+
+        // Читаем CSV обратно
+        buf.set_position(0);
+        let parsed = CSVRecords::from_read(&mut buf).unwrap();
+
+        // Проверяем, что всё совпадает
+        assert_eq!(parsed.records.len(), 2);
+        assert_eq!(parsed.records[0].tx_id, 1);
+        assert_eq!(parsed.records[0].tx_type, TxType::DEPOSIT);
+        assert_eq!(parsed.records[0].tx_status, TxStatus::SUCCESS);
+        assert_eq!(parsed.records[0].description, "Пополнение счёта");
+        assert_eq!(parsed.records[1].amount, 1500);
+        assert_eq!(parsed.records[1].tx_status, TxStatus::PENDING);
+    }
+
+    #[test]
+    fn test_csv_from_read_with_invalid_header() {
+        let bad_csv = "WRONG_HEADER\nsomething,else\n";
+        let mut cursor = Cursor::new(bad_csv.as_bytes());
+        let result = CSVRecords::from_read(&mut cursor);
+        assert!(
+            result.is_err(),
+            "ожидалась ошибка при неверном CSV-заголовке"
+        );
+    }
+
+    #[test]
+    fn test_csv_from_read_with_empty_file() {
+        let mut cursor = Cursor::new(b"");
+        let result = CSVRecords::from_read(&mut cursor);
+        assert!(result.is_err());
+    }
 }

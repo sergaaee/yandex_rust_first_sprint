@@ -2,14 +2,14 @@ pub mod bin_format;
 pub mod txt_format;
 pub mod csv_format;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TxType {
     DEPOSIT,
     WITHDRAWAL,
     TRANSFER,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TxStatus {
     FAILURE,
     PENDING,

@@ -98,3 +98,128 @@ fn parse_record(map: &HashMap<String, String>) -> Result<Record, String> {
         amount: get(map, "AMOUNT")?,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn sample_records() -> Vec<Record> {
+        vec![
+            Record {
+                tx_type: TxType::DEPOSIT,
+                tx_status: TxStatus::SUCCESS,
+                to_user_id: 111,
+                from_user_id: 0,
+                timestamp: 1700000000,
+                description: "Record 1".to_string(),
+                tx_id: 1,
+                amount: 5000,
+            },
+            Record {
+                tx_type: TxType::TRANSFER,
+                tx_status: TxStatus::PENDING,
+                to_user_id: 222,
+                from_user_id: 111,
+                timestamp: 1700000500,
+                description: "Record 2".to_string(),
+                tx_id: 2,
+                amount: 1500,
+            },
+        ]
+    }
+
+    #[test]
+    fn test_txt_write_and_read_back() {
+        let records = sample_records();
+
+        // Пишем в текст
+        let mut buf = Cursor::new(Vec::new());
+        TXTRecords::write_to(&records, &mut buf).unwrap();
+
+        // Читаем обратно
+        buf.set_position(0);
+        let parsed = TXTRecords::from_read(&mut buf).unwrap();
+
+        // Проверяем количество и значения
+        assert_eq!(parsed.records.len(), 2);
+        assert_eq!(parsed.records[0].tx_id, 1);
+        assert_eq!(parsed.records[0].tx_type, TxType::DEPOSIT);
+        assert_eq!(parsed.records[0].tx_status, TxStatus::SUCCESS);
+        assert_eq!(parsed.records[0].description, "Record 1");
+
+        assert_eq!(parsed.records[1].tx_id, 2);
+        assert_eq!(parsed.records[1].tx_type, TxType::TRANSFER);
+        assert_eq!(parsed.records[1].tx_status, TxStatus::PENDING);
+        assert_eq!(parsed.records[1].description, "Record 2");
+    }
+
+    #[test]
+    fn test_txt_from_read_with_missing_field() {
+        let bad_txt = r#"
+# Record 1 (DEPOSIT)
+TX_TYPE: DEPOSIT
+TO_USER_ID: 100
+# FROM_USER_ID отсутствует
+TIMESTAMP: 1700000000
+DESCRIPTION: "Тест"
+TX_ID: 10
+AMOUNT: 1000
+STATUS: SUCCESS
+"#;
+        let mut cursor = Cursor::new(bad_txt.as_bytes());
+        let result = TXTRecords::from_read(&mut cursor);
+        assert!(result.is_err(), "ожидалась ошибка при отсутствии поля");
+    }
+
+    #[test]
+    fn test_txt_from_read_with_empty_file() {
+        let mut cursor = Cursor::new(b"");
+        let result = TXTRecords::from_read(&mut cursor);
+        // Пустой файл — просто без записей, но не ошибка
+        assert!(result.is_ok());
+        assert!(result.unwrap().records.is_empty());
+    }
+
+    #[test]
+    fn test_txt_from_read_with_invalid_type() {
+        let invalid = r#"
+# Record 1 (INVALID)
+TX_TYPE: UNKNOWN
+TO_USER_ID: 1
+FROM_USER_ID: 2
+TIMESTAMP: 123
+DESCRIPTION: "desc"
+TX_ID: 5
+AMOUNT: 99
+STATUS: SUCCESS
+"#;
+        let mut cursor = Cursor::new(invalid.as_bytes());
+        let result = TXTRecords::from_read(&mut cursor);
+        assert!(
+            result.is_err(),
+            "должна быть ошибка для неизвестного TX_TYPE"
+        );
+    }
+
+    #[test]
+    fn test_txt_from_read_with_invalid_status() {
+        let invalid = r#"
+# Record 1 (DEPOSIT)
+TX_TYPE: DEPOSIT
+TO_USER_ID: 1
+FROM_USER_ID: 2
+TIMESTAMP: 123
+DESCRIPTION: "desc"
+TX_ID: 5
+AMOUNT: 99
+STATUS: WTF
+"#;
+        let mut cursor = Cursor::new(invalid.as_bytes());
+        let result = TXTRecords::from_read(&mut cursor);
+        assert!(
+            result.is_err(),
+            "должна быть ошибка для неизвестного STATUS"
+        );
+    }
+}
