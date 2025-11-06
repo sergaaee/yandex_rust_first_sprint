@@ -10,7 +10,7 @@ pub struct CSVRecords {
 impl Converter for CSVRecords {
     fn from_read<R: Read>(r: &mut R) -> Result<Self, ParsingError> {
         let mut s = String::new();
-        r.read_to_string(&mut s).map_err(|e| ParsingError::IoError(e))?;
+        r.read_to_string(&mut s)?;
 
         let mut records = Vec::new();
 
@@ -56,13 +56,11 @@ impl Converter for CSVRecords {
         Ok(CSVRecords { records })
     }
 
-    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), ConvertingError> {
+    fn write_to<W: Write>(records: &[Record], writer: &mut W) -> Result<(), ConvertingError> {
         writeln!(
             writer,
             "TX_TYPE,STATUS,TO_USER_ID,FROM_USER_ID,TIMESTAMP,DESCRIPTION,TX_ID,AMOUNT"
-        )
-        .map_err(|e| ConvertingError::IoError(e))
-        .expect("Expected column");
+        )?;
 
         for rec in records {
             writeln!(
@@ -76,15 +74,13 @@ impl Converter for CSVRecords {
                 rec.description,
                 rec.tx_id,
                 rec.amount
-            )
-            .map_err(|e| ConvertingError::IoError(e))
-            .expect("Expected column");
+            )?
         }
 
         Ok(())
     }
 
-    fn as_records(&self) -> &Vec<Record> {
+    fn as_records(&self) -> &[Record] {
         &self.records
     }
 }

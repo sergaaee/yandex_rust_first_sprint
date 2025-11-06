@@ -1,8 +1,8 @@
 use clap::Parser;
 use parser_converter::Converter;
+use parser_converter::errors::{AppError, ParsingError};
 use parser_converter::{bin_format::BinRecords, csv_format::CSVRecords, txt_format::TXTRecords};
-use std::{fs::File, io, path::PathBuf};
-use std::thread::current;
+use std::{fs::File, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "ypbank_compareer")]
@@ -17,7 +17,7 @@ struct Args {
     file2: PathBuf,
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), AppError> {
     let args = Args::parse();
     let first_file_format = detect_format(&args.file1).unwrap_or_else(|| "unknown".to_string());
     let second_file_format = detect_format(&args.file2).unwrap_or_else(|| "unknown".to_string());
@@ -27,17 +27,17 @@ fn main() -> io::Result<()> {
 
     // читаем входной формат и записываем в новый
     match (first_file_format.as_str(), second_file_format.as_str()) {
-        ("txt", "txt") => compare::<TXTRecords, TXTRecords>(&mut file1, &mut file2).unwrap(),
-        ("bin", "txt") => compare::<BinRecords, TXTRecords>(&mut file1, &mut file2).unwrap(),
-        ("bin", "csv") => compare::<BinRecords, CSVRecords>(&mut file1, &mut file2).unwrap(),
+        ("txt", "txt") => compare::<TXTRecords, TXTRecords>(&mut file1, &mut file2)?,
+        ("bin", "txt") => compare::<BinRecords, TXTRecords>(&mut file1, &mut file2)?,
+        ("bin", "csv") => compare::<BinRecords, CSVRecords>(&mut file1, &mut file2)?,
 
-        ("bin", "bin") => compare::<BinRecords, BinRecords>(&mut file1, &mut file2).unwrap(),
-        ("txt", "bin") => compare::<TXTRecords, BinRecords>(&mut file1, &mut file2).unwrap(),
-        ("txt", "csv") => compare::<TXTRecords, CSVRecords>(&mut file1, &mut file2).unwrap(),
+        ("bin", "bin") => compare::<BinRecords, BinRecords>(&mut file1, &mut file2)?,
+        ("txt", "bin") => compare::<TXTRecords, BinRecords>(&mut file1, &mut file2)?,
+        ("txt", "csv") => compare::<TXTRecords, CSVRecords>(&mut file1, &mut file2)?,
 
-        ("csv", "csv") => compare::<CSVRecords, CSVRecords>(&mut file1, &mut file2).unwrap(),
-        ("csv", "bin") => compare::<CSVRecords, BinRecords>(&mut file1, &mut file2).unwrap(),
-        ("csv", "txt") => compare::<CSVRecords, TXTRecords>(&mut file1, &mut file2).unwrap(),
+        ("csv", "csv") => compare::<CSVRecords, CSVRecords>(&mut file1, &mut file2)?,
+        ("csv", "bin") => compare::<CSVRecords, BinRecords>(&mut file1, &mut file2)?,
+        ("csv", "txt") => compare::<CSVRecords, TXTRecords>(&mut file1, &mut file2)?,
 
         _ => {
             eprintln!(
@@ -53,17 +53,23 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn compare<First, Second>(first_file: &mut File, second_file: &mut File) -> Result<(), String>
+fn compare<First, Second>(first_file: &mut File, second_file: &mut File) -> Result<(), ParsingError>
 where
     First: Converter,
     Second: Converter,
 {
     let mut current_record = 0;
-    let first_records = First::from_read(first_file).unwrap();
-    let second_records = Second::from_read(second_file).unwrap();
+    let first_records = First::from_read(first_file)?;
+    let second_records = Second::from_read(second_file)?;
 
-    if &first_records.as_records().len() != &second_records.as_records().len() {
-        panic!("Bad")
+    let f_len = &first_records.as_records().len();
+    let s_len = &second_records.as_records().len();
+
+    if f_len != s_len {
+        println!(
+            "The count of transactions isn't equal: {} vs {}",
+            f_len, s_len
+        )
     }
 
     for (first_record, second_record) in first_records

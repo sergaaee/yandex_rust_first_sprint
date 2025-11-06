@@ -1,7 +1,7 @@
+use crate::errors::{ConvertingError, ParsingError};
 use crate::{Converter, Record, TxStatus, TxType};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
-use crate::errors::{ConvertingError, ParsingError};
 
 pub struct BinRecords {
     pub records: Vec<Record>,
@@ -33,31 +33,29 @@ impl Converter for BinRecords {
 
             let mut cursor = std::io::Cursor::new(body);
 
-            let tx_id = cursor.read_u64::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
-            let tx_type = match cursor.read_u8().map_err(|e| ParsingError::IoError(e))? {
+            let tx_id = cursor.read_u64::<BigEndian>()?;
+            let tx_type = match cursor.read_u8()? {
                 0 => TxType::DEPOSIT,
                 1 => TxType::TRANSFER,
                 2 => TxType::WITHDRAWAL,
                 _ => return Err(ParsingError::WrongTxType),
             };
 
-            let from_user_id = cursor.read_u64::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
-            let to_user_id = cursor.read_u64::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
-            let amount = cursor.read_u64::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
-            let timestamp = cursor.read_u64::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
+            let from_user_id = cursor.read_u64::<BigEndian>()?;
+            let to_user_id = cursor.read_u64::<BigEndian>()?;
+            let amount = cursor.read_u64::<BigEndian>()?;
+            let timestamp = cursor.read_u64::<BigEndian>()?;
 
-            let tx_status = match cursor.read_u8().map_err(|e| ParsingError::IoError(e))? {
+            let tx_status = match cursor.read_u8()? {
                 0 => TxStatus::SUCCESS,
                 1 => TxStatus::FAILURE,
                 2 => TxStatus::PENDING,
                 _ => return Err(ParsingError::WrongStatusType),
             };
 
-            let desc_len = cursor.read_u32::<BigEndian>().map_err(|e| ParsingError::IoError(e))?;
+            let desc_len = cursor.read_u32::<BigEndian>()?;
             let mut desc_buf = vec![0u8; desc_len as usize];
-            cursor
-                .read_exact(&mut desc_buf)
-                .map_err(|e| ParsingError::IoError(e))?;
+            cursor.read_exact(&mut desc_buf)?;
             let description = String::from_utf8_lossy(&desc_buf)
                 .to_string()
                 .replace("\"", "");
@@ -77,53 +75,44 @@ impl Converter for BinRecords {
         Ok(BinRecords { records })
     }
 
-    fn write_to<W: Write>(records: &Vec<Record>, w: &mut W) -> Result<(), ConvertingError> {
+    fn write_to<W: Write>(records: &[Record], w: &mut W) -> Result<(), ConvertingError> {
         for record in records {
             let mut body = Vec::new();
 
             // === Поля тела ===
-            body.write_u64::<BigEndian>(record.tx_id)
-                .map_err(|e| ConvertingError::IoError(e))?;
+            body.write_u64::<BigEndian>(record.tx_id)?;
 
             body.write_u8(match record.tx_type {
                 TxType::DEPOSIT => 0,
                 TxType::TRANSFER => 1,
                 TxType::WITHDRAWAL => 2,
-            })
-                .map_err(|e| ConvertingError::IoError(e))?;
+            })?;
 
-            body.write_u64::<BigEndian>(record.from_user_id)
-                .map_err(|e| ConvertingError::IoError(e))?;
-            body.write_u64::<BigEndian>(record.to_user_id)
-                .map_err(|e| ConvertingError::IoError(e))?;
-            body.write_i64::<BigEndian>(record.amount as i64)
-                .map_err(|e| ConvertingError::IoError(e))?;
-            body.write_u64::<BigEndian>(record.timestamp)
-                .map_err(|e| ConvertingError::IoError(e))?;
+            body.write_u64::<BigEndian>(record.from_user_id)?;
+            body.write_u64::<BigEndian>(record.to_user_id)?;
+            body.write_i64::<BigEndian>(record.amount as i64)?;
+            body.write_u64::<BigEndian>(record.timestamp)?;
 
             body.write_u8(match record.tx_status {
                 TxStatus::SUCCESS => 0,
                 TxStatus::FAILURE => 1,
                 TxStatus::PENDING => 2,
-            })
-            .map_err(|e| ConvertingError::IoError(e))?;
+            })?;
 
             let desc_bytes = record.description.as_bytes();
-            body.write_u32::<BigEndian>(desc_bytes.len() as u32)
-                .map_err(|e| ConvertingError::IoError(e))?;
-            body.write_all(desc_bytes).map_err(|e| ConvertingError::IoError(e))?;
+            body.write_u32::<BigEndian>(desc_bytes.len() as u32)?;
+            body.write_all(desc_bytes)?;
 
             // === Заголовок ===
-            w.write_all(b"YPBN").map_err(|e| ConvertingError::IoError(e))?;
-            w.write_u32::<BigEndian>(body.len() as u32)
-                .map_err(|e| ConvertingError::IoError(e))?;
-            w.write_all(&body).map_err(|e| ConvertingError::IoError(e))?;
+            w.write_all(b"YPBN")?;
+            w.write_u32::<BigEndian>(body.len() as u32)?;
+            w.write_all(&body)?;
         }
 
         Ok(())
     }
 
-    fn as_records(&self) -> &Vec<Record> {
+    fn as_records(&self) -> &[Record] {
         &self.records
     }
 }

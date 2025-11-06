@@ -1,9 +1,9 @@
 use crate::errors::{ConvertingError, ParsingError};
 
 pub mod bin_format;
-pub mod txt_format;
 pub mod csv_format;
 pub mod errors;
+pub mod txt_format;
 
 #[derive(Debug, PartialEq)]
 pub enum TxType {
@@ -37,7 +37,10 @@ pub trait Converter {
     fn from_read<R: std::io::Read>(r: &mut R) -> Result<Self, ParsingError>
     where
         Self: Sized;
-    fn write_to<W: std::io::Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), ConvertingError>;
+    fn write_to<W: std::io::Write>(
+        records: &[Record],
+        writer: &mut W,
+    ) -> Result<(), ConvertingError>;
 
-    fn as_records(&self) -> &Vec<Record>;
+    fn as_records(&self) -> &[Record];
 }

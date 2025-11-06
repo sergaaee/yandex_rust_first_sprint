@@ -10,8 +10,7 @@ pub struct TXTRecords {
 impl Converter for TXTRecords {
     fn from_read<R: Read>(r: &mut R) -> Result<Self, ParsingError> {
         let mut s = String::new();
-        r.read_to_string(&mut s)
-            .map_err(|e| ParsingError::IoError(e))?;
+        r.read_to_string(&mut s)?;
 
         let mut records = Vec::new();
         let mut current = HashMap::<String, String>::new();
@@ -46,7 +45,7 @@ impl Converter for TXTRecords {
         Ok(TXTRecords { records })
     }
 
-    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), ConvertingError> {
+    fn write_to<W: Write>(records: &[Record], writer: &mut W) -> Result<(), ConvertingError> {
         for (i, record) in records.iter().enumerate() {
             writeln!(writer, "# Record {} ({:?})", i + 1, record.tx_type)?;
             writeln!(writer, "TX_TYPE: {:?}", record.tx_type)?;
@@ -62,7 +61,7 @@ impl Converter for TXTRecords {
         Ok(())
     }
 
-    fn as_records(&self) -> &Vec<Record> {
+    fn as_records(&self) -> &[Record] {
         &self.records
     }
 }

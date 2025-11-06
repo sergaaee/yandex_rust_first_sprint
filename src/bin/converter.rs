@@ -1,13 +1,9 @@
 use clap::Parser;
+use parser_converter::errors::{AppError, ConvertingError};
 use parser_converter::{
     Converter, bin_format::BinRecords, csv_format::CSVRecords, txt_format::TXTRecords,
 };
-use std::{
-    fs::File,
-    io::{self, BufWriter},
-    path::PathBuf,
-};
-use parser_converter::errors::ConvertingError;
+use std::{fs::File, io::BufWriter, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "ypbank_converter")]
@@ -22,7 +18,7 @@ struct Args {
     output_format: String,
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), AppError> {
     let args = Args::parse();
     let input_format = detect_format(&args.input).unwrap_or_else(|| "unknown".to_string());
 
@@ -38,14 +34,14 @@ fn main() -> io::Result<()> {
 
     // читаем входной формат и записываем в новый
     match (input_format.as_str(), args.output_format.as_str()) {
-        ("bin", "txt") => convert::<BinRecords, TXTRecords>(&mut file, &output_path).unwrap(),
-        ("bin", "csv") => convert::<BinRecords, CSVRecords>(&mut file, &output_path).unwrap(),
+        ("bin", "txt") => convert::<BinRecords, TXTRecords>(&mut file, &output_path)?,
+        ("bin", "csv") => convert::<BinRecords, CSVRecords>(&mut file, &output_path)?,
 
-        ("txt", "bin") => convert::<TXTRecords, BinRecords>(&mut file, &output_path).unwrap(),
-        ("txt", "csv") => convert::<TXTRecords, CSVRecords>(&mut file, &output_path).unwrap(),
+        ("txt", "bin") => convert::<TXTRecords, BinRecords>(&mut file, &output_path)?,
+        ("txt", "csv") => convert::<TXTRecords, CSVRecords>(&mut file, &output_path)?,
 
-        ("csv", "bin") => convert::<CSVRecords, BinRecords>(&mut file, &output_path).unwrap(),
-        ("csv", "txt") => convert::<CSVRecords, TXTRecords>(&mut file, &output_path).unwrap(),
+        ("csv", "bin") => convert::<CSVRecords, BinRecords>(&mut file, &output_path)?,
+        ("csv", "txt") => convert::<CSVRecords, TXTRecords>(&mut file, &output_path)?,
 
         _ => {
             eprintln!(
@@ -65,8 +61,8 @@ where
     From: Converter,
     To: Converter,
 {
-    let records = From::from_read(reader).unwrap();
-    let mut writer = BufWriter::new(File::create(output_path).map_err(|e| ConvertingError::IoError(e))?);
+    let records = From::from_read(reader)?;
+    let mut writer = BufWriter::new(File::create(output_path)?);
     To::write_to(records.as_records(), &mut writer)
 }
 
