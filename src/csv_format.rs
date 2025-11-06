@@ -1,4 +1,6 @@
+use crate::errors::{ConvertingError, ParsingError};
 use crate::{Converter, Record, TxStatus, TxType};
+use std::collections::HashMap;
 use std::io::{Read, Write};
 
 pub struct CSVRecords {
@@ -6,9 +8,9 @@ pub struct CSVRecords {
 }
 
 impl Converter for CSVRecords {
-    fn from_read<R: Read>(r: &mut R) -> Result<Self, String> {
+    fn from_read<R: Read>(r: &mut R) -> Result<Self, ParsingError> {
         let mut s = String::new();
-        r.read_to_string(&mut s).map_err(|e| e.to_string())?;
+        r.read_to_string(&mut s).map_err(|e| ParsingError::IoError(e))?;
 
         let mut records = Vec::new();
 
@@ -17,7 +19,7 @@ impl Converter for CSVRecords {
         let mut lines = s.lines();
         let header = lines
             .next()
-            .ok_or("Пустой CSV-файл")?
+            .ok_or(ParsingError::EmptyFile)?
             .trim()
             .split(',')
             .map(|s| s.trim().to_string())
@@ -35,11 +37,10 @@ impl Converter for CSVRecords {
                 .collect();
 
             if values.len() != header.len() {
-                return Err(format!(
-                    "Ошибка в строке {}: ожидалось {} столбцов, найдено {}",
+                return Err(ParsingError::WrongColumnCount(
                     line_num + 2,
                     header.len(),
-                    values.len()
+                    values.len(),
                 ));
             }
 
@@ -55,12 +56,13 @@ impl Converter for CSVRecords {
         Ok(CSVRecords { records })
     }
 
-    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), String> {
+    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), ConvertingError> {
         writeln!(
             writer,
             "TX_TYPE,STATUS,TO_USER_ID,FROM_USER_ID,TIMESTAMP,DESCRIPTION,TX_ID,AMOUNT"
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ConvertingError::IoError(e))
+        .expect("Expected column");
 
         for rec in records {
             writeln!(
@@ -75,7 +77,8 @@ impl Converter for CSVRecords {
                 rec.tx_id,
                 rec.amount
             )
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ConvertingError::IoError(e))
+            .expect("Expected column");
         }
 
         Ok(())
@@ -86,15 +89,18 @@ impl Converter for CSVRecords {
     }
 }
 
-fn parse_record(map: &std::collections::HashMap<String, String>) -> Result<Record, String> {
+fn parse_record(map: &HashMap<String, String>) -> Result<Record, ParsingError> {
     fn get<T: std::str::FromStr>(
-        map: &std::collections::HashMap<String, String>,
+        map: &HashMap<String, String>,
         key: &str,
-    ) -> Result<T, String> {
-        map.get(key)
-            .ok_or_else(|| format!("нет {}", key))?
+    ) -> Result<T, ParsingError> {
+        let value = map
+            .get(key)
+            .ok_or_else(|| ParsingError::MissingKey(key.to_string()))?;
+
+        value
             .parse::<T>()
-            .map_err(|_| format!("ошибка парсинга {}", key))
+            .map_err(|_| ParsingError::WrongKey(key.to_string()))
     }
 
     let tx_type = match map.get("TX_TYPE").map(|s| s.as_str()) {
@@ -104,7 +110,7 @@ fn parse_record(map: &std::collections::HashMap<String, String>) -> Result<Recor
         Some(v) if v.eq_ignore_ascii_case("deposit") => TxType::DEPOSIT,
         Some(v) if v.eq_ignore_ascii_case("withdrawal") => TxType::WITHDRAWAL,
         Some(v) if v.eq_ignore_ascii_case("transfer") => TxType::TRANSFER,
-        _ => return Err("неизвестный TX_TYPE".into()),
+        _ => return Err(ParsingError::WrongTxType),
     };
 
     let tx_status = match map.get("STATUS").map(|s| s.as_str()) {
@@ -114,7 +120,7 @@ fn parse_record(map: &std::collections::HashMap<String, String>) -> Result<Recor
         Some(v) if v.eq_ignore_ascii_case("failure") => TxStatus::FAILURE,
         Some(v) if v.eq_ignore_ascii_case("pending") => TxStatus::PENDING,
         Some(v) if v.eq_ignore_ascii_case("success") => TxStatus::SUCCESS,
-        _ => return Err("неизвестный STATUS".into()),
+        _ => return Err(ParsingError::WrongStatusType),
     };
 
     Ok(Record {

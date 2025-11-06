@@ -1,3 +1,4 @@
+use crate::errors::{ConvertingError, ParsingError};
 use crate::{Converter, Record, TxStatus, TxType};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -7,9 +8,10 @@ pub struct TXTRecords {
 }
 
 impl Converter for TXTRecords {
-    fn from_read<R: Read>(r: &mut R) -> Result<Self, String> {
+    fn from_read<R: Read>(r: &mut R) -> Result<Self, ParsingError> {
         let mut s = String::new();
-        r.read_to_string(&mut s).map_err(|e| e.to_string())?;
+        r.read_to_string(&mut s)
+            .map_err(|e| ParsingError::IoError(e))?;
 
         let mut records = Vec::new();
         let mut current = HashMap::<String, String>::new();
@@ -44,18 +46,18 @@ impl Converter for TXTRecords {
         Ok(TXTRecords { records })
     }
 
-    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), String> {
+    fn write_to<W: Write>(records: &Vec<Record>, writer: &mut W) -> Result<(), ConvertingError> {
         for (i, record) in records.iter().enumerate() {
-            writeln!(writer, "# Record {} ({:?})", i + 1, record.tx_type).unwrap();
-            writeln!(writer, "TX_TYPE: {:?}", record.tx_type).unwrap();
-            writeln!(writer, "TO_USER_ID: {}", record.to_user_id).unwrap();
-            writeln!(writer, "FROM_USER_ID: {}", record.from_user_id).unwrap();
-            writeln!(writer, "TIMESTAMP: {}", record.timestamp).unwrap();
-            writeln!(writer, "DESCRIPTION: {:?}", record.description).unwrap();
-            writeln!(writer, "TX_ID: {}", record.tx_id).unwrap();
-            writeln!(writer, "AMOUNT: {}", record.amount).unwrap();
-            writeln!(writer, "STATUS: {:?}", record.tx_status).unwrap();
-            writeln!(writer).unwrap();
+            writeln!(writer, "# Record {} ({:?})", i + 1, record.tx_type)?;
+            writeln!(writer, "TX_TYPE: {:?}", record.tx_type)?;
+            writeln!(writer, "TO_USER_ID: {}", record.to_user_id)?;
+            writeln!(writer, "FROM_USER_ID: {}", record.from_user_id)?;
+            writeln!(writer, "TIMESTAMP: {}", record.timestamp)?;
+            writeln!(writer, "DESCRIPTION: {:?}", record.description)?;
+            writeln!(writer, "TX_ID: {}", record.tx_id)?;
+            writeln!(writer, "AMOUNT: {}", record.amount)?;
+            writeln!(writer, "STATUS: {:?}", record.tx_status)?;
+            writeln!(writer)?;
         }
         Ok(())
     }
@@ -65,26 +67,32 @@ impl Converter for TXTRecords {
     }
 }
 
-fn parse_record(map: &HashMap<String, String>) -> Result<Record, String> {
-    fn get<T: std::str::FromStr>(map: &HashMap<String, String>, key: &str) -> Result<T, String> {
-        map.get(key)
-            .ok_or_else(|| format!("нет {}", key))?
+fn parse_record(map: &HashMap<String, String>) -> Result<Record, ParsingError> {
+    fn get<T: std::str::FromStr>(
+        map: &HashMap<String, String>,
+        key: &str,
+    ) -> Result<T, ParsingError> {
+        let value = map
+            .get(key)
+            .ok_or_else(|| ParsingError::MissingKey(key.to_string()))?;
+
+        value
             .parse::<T>()
-            .map_err(|_| format!("ошибка парсинга {}", key))
+            .map_err(|_| ParsingError::WrongKey(key.to_string()))
     }
 
     let tx_type = match map.get("TX_TYPE").map(|s| s.as_str()) {
         Some("DEPOSIT") => TxType::DEPOSIT,
         Some("WITHDRAWAL") => TxType::WITHDRAWAL,
         Some("TRANSFER") => TxType::TRANSFER,
-        _ => return Err("неизвестный TX_TYPE".into()),
+        _ => return Err(ParsingError::WrongTxType),
     };
 
     let tx_status = match map.get("STATUS").map(|s| s.as_str()) {
         Some("FAILURE") => TxStatus::FAILURE,
         Some("PENDING") => TxStatus::PENDING,
         Some("SUCCESS") => TxStatus::SUCCESS,
-        _ => return Err("неизвестный STATUS".into()),
+        _ => return Err(ParsingError::WrongStatusType),
     };
 
     Ok(Record {

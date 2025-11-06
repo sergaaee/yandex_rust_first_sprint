@@ -7,6 +7,7 @@ use std::{
     io::{self, BufWriter},
     path::PathBuf,
 };
+use parser_converter::errors::ConvertingError;
 
 #[derive(Parser, Debug)]
 #[command(name = "ypbank_converter")]
@@ -59,13 +60,13 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn convert<From, To>(reader: &mut File, output_path: &PathBuf) -> Result<(), String>
+fn convert<From, To>(reader: &mut File, output_path: &PathBuf) -> Result<(), ConvertingError>
 where
     From: Converter,
     To: Converter,
 {
-    let records = From::from_read(reader)?;
-    let mut writer = BufWriter::new(File::create(output_path).map_err(|e| e.to_string())?);
+    let records = From::from_read(reader).unwrap();
+    let mut writer = BufWriter::new(File::create(output_path).map_err(|e| ConvertingError::IoError(e))?);
     To::write_to(records.as_records(), &mut writer)
 }
 
