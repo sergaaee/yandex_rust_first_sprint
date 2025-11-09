@@ -30,8 +30,8 @@ impl Converter for BinRecords {
 
             let mut body = vec![0u8; record_size as usize];
             if r.read_exact(&mut body).is_err() {
-                break;
-            }
+                return Err(ParsingError::WrongRecordData)
+            };
 
             let mut cursor = std::io::Cursor::new(body);
 
@@ -195,18 +195,28 @@ mod tests {
     }
 
     #[test]
-    fn test_incomplete_data_returns_ok_with_partial_read() {
-        // создаём корректную запись, но обрываем на середине
+    fn test_incomplete_data_returns_error() {
+        // создаём корректную запись и обрываем на середине
         let record = sample_record(10, "Incomplete");
         let mut buf = Vec::new();
         BinRecords::write_to(&vec![record], &mut buf).unwrap();
 
+        // обрезаем половину данных
         let cutoff = buf.len() / 2;
         let mut truncated = Cursor::new(&buf[..cutoff]);
 
-        // Должен просто закончить чтение без паники
+        // вызываем парсер
         let result = BinRecords::from_read(&mut truncated);
-        assert!(result.is_ok());
-        assert!(result.unwrap().records.len() <= 1);
+
+        // ожидаем ошибку
+        assert!(result.is_err(), "Expected error for truncated binary data");
+
+        // проверяем конкретный тип ошибки
+        if let Err(ParsingError::WrongRecordData) = result {
+            // ок, всё верно
+        } else {
+            panic!("Expected ParsingError::WrongRecordData for truncated input");
+        }
     }
+
 }
