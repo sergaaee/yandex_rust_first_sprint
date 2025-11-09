@@ -1,5 +1,4 @@
 use std::{fmt, io};
-use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 
 /// Errors to be expected while parsing
