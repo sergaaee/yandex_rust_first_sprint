@@ -3,7 +3,9 @@ use crate::{Converter, Record, TxStatus, TxType};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 
+/// Records structure for .bin format
 pub struct TXTRecords {
+    /// Records
     pub records: Vec<Record>,
 }
 

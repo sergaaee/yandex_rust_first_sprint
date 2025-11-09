@@ -30,7 +30,7 @@ fn main() -> Result<(), AppError> {
     let mut file = File::open(&args.input)?;
     let mut output_path = PathBuf::new();
     output_path.push(&args.input);
-    output_path.set_extension(&args.output_format.as_str());
+    output_path.set_extension(args.output_format.as_str());
 
     // читаем входной формат и записываем в новый
     match (input_format.as_str(), args.output_format.as_str()) {

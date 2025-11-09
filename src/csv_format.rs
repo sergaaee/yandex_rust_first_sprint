@@ -3,7 +3,9 @@ use crate::{Converter, Record, TxStatus, TxType};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 
+/// Records structure for .csv format
 pub struct CSVRecords {
+    /// Records
     pub records: Vec<Record>,
 }
 

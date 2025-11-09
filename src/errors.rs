@@ -1,24 +1,51 @@
 use std::{fmt, io};
 
+/// Errors to be expected while parsing
 #[derive(Debug)]
 pub enum ParsingError {
+    /// .bin format error for header "YPBN"
     InvalidMagicHeader,
+    /// .bin format error if there's not enough data for record
     WrongRecordData,
+    /// Wrong transaction id type, e.g not u64
     WrongTxId,
+    /// Wrong transaction type (- TxType)
     WrongTxType,
+    /// Wrong transaction status (- TxStatus)
     WrongStatusType,
+    /// Empty file
     EmptyFile,
+    /// .csv format error if column count in presented file is less than required
     WrongColumnCount(usize, usize, usize),
+    /// .csv and .txt format error if key is missing
     MissingKey(String),
+    /// .csv and .txt format error if the key is wrong (e.g not presented in Record)
     WrongKey(String),
+    /// IoError while reading file
     IoError(io::Error),
 }
 
+/// Error to be expected while converting
 #[derive(Debug)]
 pub enum ConvertingError {
+    /// IoError while reading/creating file
     IoError(io::Error),
+    /// Parsing errors
     Parsing(ParsingError),
+    /// Unexpected errors
     Unknown,
+}
+
+
+/// Main logic error in app to be expected
+#[derive(Debug)]
+pub enum AppError {
+    /// IoError while reading/convertings
+    Io(io::Error),
+    /// Converting errors
+    Convert(ConvertingError),
+    /// Parsing Errors
+    Parse(ParsingError),
 }
 
 impl fmt::Display for ParsingError {
@@ -39,13 +66,6 @@ impl fmt::Display for ParsingError {
             ParsingError::IoError(err) => write!(f, "IO error: {}", err),
         }
     }
-}
-
-#[derive(Debug)]
-pub enum AppError {
-    Io(io::Error),
-    Convert(ConvertingError),
-    Parse(ParsingError),
 }
 
 impl From<io::Error> for AppError {

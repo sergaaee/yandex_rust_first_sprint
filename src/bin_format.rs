@@ -3,7 +3,9 @@ use crate::{Converter, Record, TxStatus, TxType};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
+/// Records structure for .bin format
 pub struct BinRecords {
+    /// Records
     pub records: Vec<Record>,
 }
 
