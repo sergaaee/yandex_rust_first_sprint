@@ -5,7 +5,7 @@ use parser_converter::{bin_format::BinRecords, csv_format::CSVRecords, txt_forma
 use std::{fs::File, path::PathBuf};
 
 #[derive(Parser, Debug)]
-#[command(name = "ypbank_compareer")]
+#[command(name = "ypbank_comparer")]
 #[command(about = "compares YPBank transaction records between formats")]
 struct Args {
     /// Input first file path
