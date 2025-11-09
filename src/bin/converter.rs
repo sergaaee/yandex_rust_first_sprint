@@ -22,11 +22,6 @@ fn main() -> Result<(), AppError> {
     let args = Args::parse();
     let input_format = detect_format(&args.input).unwrap_or_else(|| "unknown".to_string());
 
-    // if input_format == args.output_format {
-    //     eprintln!("❌ Input and output formats are the same — nothing to convert.");
-    //     std::process::exit(1);
-    // }
-
     let mut file = File::open(&args.input)?;
     let mut output_path = PathBuf::new();
     output_path.push(&args.input);
