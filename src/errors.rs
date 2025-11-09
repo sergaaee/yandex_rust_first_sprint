@@ -1,4 +1,6 @@
 use std::{fmt, io};
+use std::str::Utf8Error;
+use std::string::FromUtf8Error;
 
 /// Errors to be expected while parsing
 #[derive(Debug)]
@@ -23,6 +25,8 @@ pub enum ParsingError {
     WrongKey(String),
     /// IoError while reading file
     IoError(io::Error),
+    /// Utf8 Error
+    Utf8Error(FromUtf8Error),
 }
 
 /// Error to be expected while converting
@@ -64,6 +68,7 @@ impl fmt::Display for ParsingError {
             ParsingError::MissingKey(key) => write!(f, "Missing key {key}"),
             ParsingError::WrongKey(key) => write!(f, "Error parsing key {key}"),
             ParsingError::IoError(err) => write!(f, "IO error: {}", err),
+            ParsingError::Utf8Error(err) => write!(f, "Utf8Error: {}", err)
         }
     }
 }
@@ -71,6 +76,12 @@ impl fmt::Display for ParsingError {
 impl From<io::Error> for AppError {
     fn from(e: io::Error) -> Self {
         AppError::Io(e)
+    }
+}
+
+impl From<FromUtf8Error> for ParsingError {
+    fn from(e: FromUtf8Error) -> Self {
+        ParsingError::Utf8Error(e)
     }
 }
 

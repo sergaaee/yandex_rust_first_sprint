@@ -58,7 +58,7 @@ impl Converter for BinRecords {
             let desc_len = cursor.read_u32::<BigEndian>()?;
             let mut desc_buf = vec![0u8; desc_len as usize];
             cursor.read_exact(&mut desc_buf)?;
-            let description = String::from_utf8_lossy(&desc_buf)
+            let description = String::from_utf8(desc_buf)?
                 .to_string()
                 .replace("\"", "");
 
