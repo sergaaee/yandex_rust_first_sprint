@@ -1,5 +1,5 @@
 use crate::errors::{ConvertingError, ParsingError};
-use crate::{Converter, Record, TxStatus, TxType};
+use crate::{Converter, MIN_FIXED_SIZE, Record, TxStatus, TxType};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
@@ -28,9 +28,13 @@ impl Converter for BinRecords {
                 Err(_) => Err(ParsingError::WrongRecordData),
             }?;
 
+            if record_size < MIN_FIXED_SIZE {
+                return Err(ParsingError::WrongRecordData);
+            }
+
             let mut body = vec![0u8; record_size as usize];
             if r.read_exact(&mut body).is_err() {
-                return Err(ParsingError::WrongRecordData)
+                return Err(ParsingError::WrongRecordData);
             };
 
             let mut cursor = std::io::Cursor::new(body);
@@ -56,11 +60,16 @@ impl Converter for BinRecords {
             };
 
             let desc_len = cursor.read_u32::<BigEndian>()?;
+
+            // Проверка, что desc_len корректно укладывается в record_size
+            let expected_total = MIN_FIXED_SIZE + desc_len;
+            if expected_total > record_size {
+                return Err(ParsingError::WrongRecordData);
+            }
+
             let mut desc_buf = vec![0u8; desc_len as usize];
             cursor.read_exact(&mut desc_buf)?;
-            let description = String::from_utf8(desc_buf)?
-                .to_string()
-                .replace("\"", "");
+            let description = String::from_utf8(desc_buf)?.to_string().replace("\"", "");
 
             records.push(Record {
                 tx_type,
@@ -218,5 +227,4 @@ mod tests {
             panic!("Expected ParsingError::WrongRecordData for truncated input");
         }
     }
-
 }

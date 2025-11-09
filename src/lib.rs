@@ -18,6 +18,9 @@ pub mod errors;
 /// TXT format reader/writer implementation
 pub mod txt_format;
 
+// Minimal size of fixed part in .bin format w/out description
+pub const MIN_FIXED_SIZE: u32 = 8 + 1 + 8 + 8 + 8 + 8 + 1 + 4; // = 46 bytes
+
 /// Supported file formats for converting
 #[derive(Clone, Debug, ValueEnum)]
 pub enum Format {
