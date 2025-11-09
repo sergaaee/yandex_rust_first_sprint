@@ -2,6 +2,7 @@ use clap::Parser;
 use parser_converter::Converter;
 use parser_converter::errors::{AppError, ParsingError};
 use parser_converter::{bin_format::BinRecords, csv_format::CSVRecords, txt_format::TXTRecords};
+use std::path::Path;
 use std::{fs::File, path::PathBuf};
 
 #[derive(Parser, Debug)]
@@ -131,7 +132,7 @@ where
     Ok(())
 }
 
-fn detect_format(path: &PathBuf) -> Option<String> {
+fn detect_format(path: &Path) -> Option<String> {
     path.extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_lowercase())

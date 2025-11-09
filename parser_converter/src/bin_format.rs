@@ -208,7 +208,7 @@ mod tests {
         // создаём корректную запись и обрываем на середине
         let record = sample_record(10, "Incomplete");
         let mut buf = Vec::new();
-        BinRecords::write_to(&vec![record], &mut buf).unwrap();
+        BinRecords::write_to(&[record], &mut buf).unwrap();
 
         // обрезаем половину данных
         let cutoff = buf.len() / 2;

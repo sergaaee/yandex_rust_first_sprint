@@ -3,6 +3,7 @@ use parser_converter::errors::{AppError, ConvertingError};
 use parser_converter::{
     Converter, Format, bin_format::BinRecords, csv_format::CSVRecords, txt_format::TXTRecords,
 };
+use std::path::Path;
 use std::{fs::File, io::BufWriter, path::PathBuf};
 
 #[derive(Parser, Debug)]
@@ -61,7 +62,7 @@ where
     To::write_to(records.as_records(), &mut writer)
 }
 
-fn detect_format(path: &PathBuf) -> Option<String> {
+fn detect_format(path: &Path) -> Option<String> {
     path.extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_lowercase())
