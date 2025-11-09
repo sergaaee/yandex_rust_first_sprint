@@ -66,7 +66,7 @@ pub enum TxStatus {
 }
 
 /// Structure represents records of transactions
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Record {
     /// Transaction type
     pub tx_type: TxType,
