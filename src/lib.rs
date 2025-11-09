@@ -1,9 +1,28 @@
 use crate::errors::{ConvertingError, ParsingError};
+use clap::ValueEnum;
 
 pub mod bin_format;
 pub mod csv_format;
 pub mod errors;
 pub mod txt_format;
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum Format {
+    Bin,
+    Txt,
+    Csv,
+}
+
+impl Format {
+    /// Возвращает строковое представление в нижнем регистре
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Format::Bin => "bin",
+            Format::Txt => "txt",
+            Format::Csv => "csv",
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum TxType {
