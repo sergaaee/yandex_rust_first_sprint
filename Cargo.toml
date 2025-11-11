@@ -1,8 +1,12 @@
-[package]
+[workspace.package]
 name = "parser_converter"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace]
+members = ["parser_converter", "converter", "comparer"]
+resolver = "3"
+
+[workspace.dependencies]
 byteorder = "1"
 clap = { version = "4", features = ["derive"] }

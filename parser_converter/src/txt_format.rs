@@ -73,13 +73,13 @@ fn parse_record(map: &HashMap<String, String>) -> Result<Record, ParsingError> {
         map: &HashMap<String, String>,
         key: &str,
     ) -> Result<T, ParsingError> {
-        let value = map
-            .get(key)
-            .ok_or_else(|| ParsingError::MissingKey(key.to_string()))?;
+        let value = map.get(key).ok_or_else(|| ParsingError::MissingKey {
+            key: key.to_string(),
+        })?;
 
-        value
-            .parse::<T>()
-            .map_err(|_| ParsingError::WrongKey(key.to_string()))
+        value.parse::<T>().map_err(|_| ParsingError::WrongKey {
+            key: key.to_string(),
+        })
     }
 
     let tx_type = match map.get("TX_TYPE").map(|s| s.as_str()) {

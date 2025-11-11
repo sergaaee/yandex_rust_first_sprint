@@ -12,11 +12,14 @@ pub mod bin_format;
 /// CSV format reader/writer implementation
 pub mod csv_format;
 
+/// TXT format reader/writer implementation
+pub mod txt_format;
+
 /// Common error types for parsing and converting
 pub mod errors;
 
-/// TXT format reader/writer implementation
-pub mod txt_format;
+/// Minimal size of fixed part in .bin format w/out description
+pub const MIN_FIXED_SIZE: u32 = 8 + 1 + 8 + 8 + 8 + 8 + 1 + 4; // = 46 bytes
 
 /// Supported file formats for converting
 #[derive(Clone, Debug, ValueEnum)]
@@ -63,7 +66,7 @@ pub enum TxStatus {
 }
 
 /// Structure represents records of transactions
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Record {
     /// Transaction type
     pub tx_type: TxType,
