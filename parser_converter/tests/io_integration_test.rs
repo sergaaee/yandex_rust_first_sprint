@@ -5,7 +5,7 @@ use parser_converter::{
     Converter, bin_format::BinRecords, csv_format::CSVRecords, txt_format::TXTRecords,
 };
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 
 /// Проверяет, что запись и чтение реальных файлов во всех трёх форматах возвращает идентичные данные
@@ -25,7 +25,13 @@ fn test_all_interconversions_produce_same_data() {
 
 /// Универсальная функция для сравнения двух наборов записей
 fn assert_records_equal(a: &[parser_converter::Record], b: &[parser_converter::Record]) {
-    assert_eq!(a.len(), b.len(), "Record count mismatch: {} != {}", a.len(), b.len());
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "Record count mismatch: {} != {}",
+        a.len(),
+        b.len()
+    );
     for (i, (r1, r2)) in a.iter().zip(b.iter()).enumerate() {
         assert_eq!(r1, r2, "Records differ at index {}", i);
     }
@@ -43,7 +49,7 @@ fn test_bin_to_txt_and_back() {
     // Rust не гарантирует запись данных на диск до тех пор пока не вызван flush / writer не дропнут
     {
         let mut txt_writer = BufWriter::new(File::create(&txt_path).unwrap());
-        TXTRecords::write_to(&bin_records.as_records(), &mut txt_writer).unwrap();
+        TXTRecords::write_to(bin_records.as_records(), &mut txt_writer).unwrap();
     }
 
     let mut txt_reader = BufReader::new(File::open(&txt_path).unwrap());
@@ -64,7 +70,7 @@ fn test_csv_to_bin_and_back() {
     // Rust не гарантирует запись данных на диск до тех пор пока не вызван flush / writer не дропнут
     {
         let mut bin_writer = BufWriter::new(File::create(&bin_path).unwrap());
-        BinRecords::write_to(&csv_records.as_records(), &mut bin_writer).unwrap();
+        BinRecords::write_to(csv_records.as_records(), &mut bin_writer).unwrap();
     }
 
     let mut bin_reader = BufReader::new(File::open(&bin_path).unwrap());
@@ -85,7 +91,7 @@ fn test_txt_to_csv_and_back() {
     // Rust не гарантирует запись данных на диск до тех пор пока не вызван flush / writer не дропнут
     {
         let mut csv_writer = BufWriter::new(File::create(&csv_path).unwrap());
-        CSVRecords::write_to(&txt_records.as_records(), &mut csv_writer).unwrap();
+        CSVRecords::write_to(txt_records.as_records(), &mut csv_writer).unwrap();
     }
 
     let mut csv_reader = BufReader::new(File::open(&csv_path).unwrap());

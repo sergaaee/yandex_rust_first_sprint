@@ -1,127 +1,82 @@
+use std::io;
 use std::string::FromUtf8Error;
-use std::{fmt, io};
+use thiserror::Error;
 
 /// Errors to be expected while parsing
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParsingError {
     /// .bin format error for header "YPBN"
+    #[error("Invalid magic header")]
     InvalidMagicHeader,
     /// .bin format error if there's not enough data for record
+    #[error("Corrupted record data")]
     WrongRecordData,
     /// Wrong transaction id type, e.g not u64
+    #[error("Invalid transaction id")]
     WrongTxId,
     /// Wrong transaction type (- TxType)
+    #[error("Invalid transaction type")]
     WrongTxType,
     /// Wrong transaction status (- TxStatus)
+    #[error("Invalid transaction status")]
     WrongStatusType,
     /// Empty file
+    #[error("The file is empty")]
     EmptyFile,
     /// .csv format error if column count in presented file is less than required
-    WrongColumnCount(usize, usize, usize),
+    #[error("Error in row {line_number:?}: expected {header:?} columns, found {values:?}")]
+    WrongColumnCount {
+        /// row number
+        line_number: usize,
+        /// total amount of columns
+        header: usize,
+        /// received amount of columns
+        values: usize,
+    },
     /// .csv and .txt format error if key is missing
-    MissingKey(String),
+    #[error("Missing key: {key:?}")]
+    MissingKey {
+        /// key
+        key: String,
+    },
     /// .csv and .txt format error if the key is wrong (e.g not presented in Record)
-    WrongKey(String),
+    #[error("Wrong key: {key:?}")]
+    WrongKey {
+        /// key
+        key: String,
+    },
     /// IoError while reading file
-    IoError(io::Error),
+    #[error("IOError occurred")]
+    IoError(#[from] io::Error),
     /// Utf8 Error
-    Utf8Error(FromUtf8Error),
+    #[error("Utf8Error occurred")]
+    Utf8Error(#[from] FromUtf8Error),
 }
 
 /// Error to be expected while converting
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ConvertingError {
     /// IoError while reading/creating file
-    IoError(io::Error),
+    #[error("IOError occurred")]
+    IoError(#[from] io::Error),
     /// Parsing errors
-    Parsing(ParsingError),
+    #[error("ParsingError occurred")]
+    Parsing(#[from] ParsingError),
     /// Unexpected errors
+    #[error("unknown data store error")]
     Unknown,
 }
 
 /// Main logic error in app to be expected
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum AppError {
-    /// IoError while reading/convertings
-    Io(io::Error),
+    /// IoError while reading/converting file
+    #[error("IOError occurred")]
+    IoError(#[from] io::Error),
     /// Converting errors
-    Convert(ConvertingError),
+    #[error("ConvetingError occurred")]
+    Convert(#[from] ConvertingError),
     /// Parsing Errors
-    Parse(ParsingError),
+    #[error("ParsingError occurred")]
+    Parse(#[from] ParsingError),
 }
-
-impl fmt::Display for ParsingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParsingError::InvalidMagicHeader => write!(f, "Invalid magic header"),
-            ParsingError::WrongRecordData => write!(f, "Corrupted record data"),
-            ParsingError::WrongTxId => write!(f, "Invalid transaction ID"),
-            ParsingError::WrongTxType => write!(f, "Invalid transaction type"),
-            ParsingError::WrongStatusType => write!(f, "Invalid transaction status"),
-            ParsingError::EmptyFile => write!(f, "File is empty"),
-            ParsingError::WrongColumnCount(line_num, header, values) => write!(
-                f,
-                "Error in row {line_num}: expected {header} columns, found {values}"
-            ),
-            ParsingError::MissingKey(key) => write!(f, "Missing key {key}"),
-            ParsingError::WrongKey(key) => write!(f, "Error parsing key {key}"),
-            ParsingError::IoError(err) => write!(f, "IO error: {}", err),
-            ParsingError::Utf8Error(err) => write!(f, "Utf8Error: {}", err),
-        }
-    }
-}
-
-impl From<io::Error> for AppError {
-    fn from(e: io::Error) -> Self {
-        AppError::Io(e)
-    }
-}
-
-impl From<FromUtf8Error> for ParsingError {
-    fn from(e: FromUtf8Error) -> Self {
-        ParsingError::Utf8Error(e)
-    }
-}
-
-impl From<ConvertingError> for AppError {
-    fn from(e: ConvertingError) -> Self {
-        AppError::Convert(e)
-    }
-}
-
-impl From<ParsingError> for AppError {
-    fn from(e: ParsingError) -> Self {
-        AppError::Parse(e)
-    }
-}
-
-impl fmt::Display for ConvertingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ConvertingError::IoError(err) => write!(f, "IO error: {}", err),
-            ConvertingError::Unknown => write!(f, "Unknown error occurred"),
-            ConvertingError::Parsing(err) => write!(f, "Parsing error: {}", err),
-        }
-    }
-}
-
-impl From<io::Error> for ConvertingError {
-    fn from(err: io::Error) -> Self {
-        ConvertingError::IoError(err)
-    }
-}
-
-impl From<io::Error> for ParsingError {
-    fn from(err: io::Error) -> Self {
-        ParsingError::IoError(err)
-    }
-}
-
-impl From<ParsingError> for ConvertingError {
-    fn from(err: ParsingError) -> Self {
-        ConvertingError::Parsing(err)
-    }
-}
-
-impl std::error::Error for ParsingError {}
-impl std::error::Error for ConvertingError {}

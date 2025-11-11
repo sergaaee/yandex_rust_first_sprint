@@ -1,7 +1,7 @@
-use parser_converter::{Record, TxStatus, TxType, Converter};
 use parser_converter::bin_format::BinRecords;
 use parser_converter::csv_format::CSVRecords;
 use parser_converter::txt_format::TXTRecords;
+use parser_converter::{Converter, Record, TxStatus, TxType};
 use std::fs::File;
 use std::path::Path;
 

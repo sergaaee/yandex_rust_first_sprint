@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 byteorder = {workspace = true}
 clap = { workspace = true}
+thiserror = "2"
